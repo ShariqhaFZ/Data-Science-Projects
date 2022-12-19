@@ -1,0 +1,427 @@
+# Black Friday Sales Prediction
+
+#### Problem Statement
+A retail company “ABC Private Limited” wants to understand the customer purchase behaviour (specifically, purchase amount) against various products of different categories. They have shared purchase summary of various customers for selected high volume products from last month.
+The data set also contains customer demographics (age, gender, marital status, city_type, stay_in_current_city), product details (product_id and product category) and Total purchase_amount from last month.
+
+Now, they want to build a model to predict the purchase amount of customer against various products which will help them to create personalized offer for customers against different products.
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+
+plt.rcParams["figure.figsize"]=[25,10]
+import warnings
+warnings.filterwarnings("ignore")
+
+pd.set_option("display.max_columns",50)
+
+
+train = pd.read_csv('train.csv')
+test = pd.read_csv('test.csv')
+
+train.shape,test.shape
+
+train.head(2)
+
+combined = pd.concat([train,test],ignore_index=True)
+combined.shape
+
+combined.columns
+
+combined.corr()
+
+
+#no correlation
+
+# Describe()
+combined.describe(include='all')
+
+# popular product id: P00265242
+# Frequency of Buying is More for males
+# Most buying age is 26-35 
+# Most of the buyers are coming from city category B
+# On avg people stay for 1 year in the current city
+# Min purchase is 12 dollars & max is 23961 dollars 
+
+combined.hist(edgecolor = 'black')
+plt.tight_layout()
+plt.show()
+
+# Cat variables
+combined.select_dtypes(include='O').columns
+
+# Top 5 product IDs
+print(combined.Product_ID.value_counts()[:5].index)
+combined.Product_ID.value_counts()[:10].plot(kind='bar')
+plt.show()
+
+#Product Category
+
+prods=['P00265242', 'P00025442', 'P00110742', 'P00112142', 'P00046742']
+
+def prod_cat(x):
+    if x in prods:
+        return("Top5")
+    else:
+        return("Others")
+    
+combined["Product_Cat"] = combined.Product_ID.apply(prod_cat)
+
+#Product category vs Target
+sns.boxplot(combined["Product_Cat"], combined["Purchase"])
+
+#Gender and Age
+
+combined.Gender.value_counts().plot(kind="bar")
+
+print(combined["Age"].value_counts())
+sns.countplot(combined["Age"])
+
+# boxplot purchase an d age
+
+sns.boxplot(combined["Age"], combined["Purchase"])
+
+#Age into numbers
+
+combined.Age.unique()
+
+# creating new variables
+
+combined[["Age1", "Age2"]] = combined.Age.str.split("-", expand= True)
+
+combined["Age1"].unique()
+
+combined["Age1"] = combined["Age1"].str.strip("+").astype("float")
+
+combined["Age2"].unique()
+
+#to remove null from age 2
+
+combined.loc[combined["Age2"].isnull(), "Age2"]=55
+
+#to remove 0 from age 1
+
+combined.loc[combined["Age1"] == 0, "Age1"]=17
+
+#average age
+
+combined["Avg_Age"] = combined.loc[:, ["Age1", "Age2"]].mean(axis=1)
+combined.head()
+
+#to find correlation with the target
+
+combined.corr()
+
+#statistical test
+
+import scipy.stats as stats
+
+teststats, pvalue = stats.ttest_ind(combined["Avg_Age"], combined["Purchase"]) #not significant
+
+#stay in current city
+combined["Stay_In_Current_City_Years"].unique()
+
+combined["Stay_In_Current_City_Years"]= combined["Stay_In_Current_City_Years"].str.strip("+").astype("int")
+
+combined["Stay_In_Current_City_Years"].unique()
+
+combined.columns
+
+#product category 1
+
+combined["Product_Category_1"].unique()
+
+def prod_cat(x):
+    if x in [5,8,1]:
+        return("Top 3")
+    else:
+        return("Others")
+
+
+combined["Prod1"] = combined["Product_Category_1"].apply(prod_cat)
+combined.head()
+
+# City category
+
+combined["City_Category"].unique()
+
+
+
+sns.boxplot(combined["City_Category"], combined["Purchase"])
+
+combined.groupby(["City_Category"])["Purchase"].describe().T
+
+#Take the city category and create and mean of purchase
+
+combined["Mean_Tgt_City_Wise"] = combined.groupby(["City_Category"])["Purchase"].transform("mean")
+combined["Median_Tgt_City_Wise"] = combined.groupby(["City_Category"])["Purchase"].transform("median")
+combined["Std_Tgt_City_Wise"] = combined.groupby(["City_Category"])["Purchase"].transform("std")
+
+
+combined.corr()
+
+# User ID
+
+# count of users basis product
+
+combined["Prod_Wise_User_Count"] = combined.groupby(["Product_ID"])["User_ID"].transform("nunique")
+combined.corr()
+
+# Product and Product Cat 1 user count
+
+combined["Prod_Cat1_User_Count"] = combined.groupby(["Product_Category_1"])["User_ID"].transform("nunique")
+
+combined.corr()
+
+#Purchase stats basis product ID
+
+
+combined["Mean_Tgt_Prod_ID"] = combined.groupby(["Product_ID"])["Purchase"].transform("mean")
+combined["Median_Tgt_Prod_ID"] = combined.groupby(["Product_ID"])["Purchase"].transform("median")
+combined["Min_Tgt_Prod_ID"] = combined.groupby(["Product_ID"])["Purchase"].transform("min")
+combined["Max_Tgt_Prod_ID"] = combined.groupby(["Product_ID"])["Purchase"].transform("max")
+combined["Std_Tgt_Prod_ID"] = combined.groupby(["Product_ID"])["Purchase"].transform("std")
+
+
+combined.corr()
+
+#Purchase stats basis product ID
+
+
+combined["Mean_Tgt_User_ID"] = combined.groupby(["User_ID"])["Purchase"].transform("mean")
+combined["Median_Tgt_User_ID"] = combined.groupby(["User_ID"])["Purchase"].transform("median")
+combined["Min_Tgt_User_ID"] = combined.groupby(["User_ID"])["Purchase"].transform("min")
+combined["Max_Tgt_User_ID"] = combined.groupby(["User_ID"])["Purchase"].transform("max")
+combined["Std_Tgt_User_ID"] = combined.groupby(["User_ID"])["Purchase"].transform("std")
+
+
+combined.shape
+
+#null values
+
+combined.isnull().sum()
+
+#product on age
+
+combined["Prod_Age_Bins"]= combined.groupby(["Product_ID"])["Age"].transform("nunique")
+combined.corr()
+
+combined.corr()
+
+#occupation/ gender
+
+sns.boxplot(combined["Marital_Status"], combined["Purchase"])
+
+#dropping variables
+
+new=combined.drop(["User_ID", "Product_ID", "Age1", "Age2", "Product_Category_2", "Product_Category_3"], axis=1)
+new.shape
+
+#missing values
+
+new.isnull().sum()[new.isnull().sum()>0]
+
+#new.loc[new["Mean_Tgt_Prod_ID"].isnull()].head()
+
+val = new["Min_Tgt_Prod_ID"].median()
+
+new.loc[new["Min_Tgt_Prod_ID"].isnull(), "Min_Tgt_Prod_ID"]= val
+
+val = new["Mean_Tgt_Prod_ID"].median()
+
+new.loc[new["Mean_Tgt_Prod_ID"].isnull(), "Mean_Tgt_Prod_ID"]= val
+
+val = new["Median_Tgt_Prod_ID"].median()
+
+new.loc[new["Median_Tgt_Prod_ID"].isnull(), "Median_Tgt_Prod_ID"]= val
+
+val = new["Mean_Tgt_Prod_ID"].median()
+
+new.loc[new["Mean_Tgt_Prod_ID"].isnull(), "Mean_Tgt_Prod_ID"]= val
+
+val = new["Max_Tgt_Prod_ID"].median()
+
+new.loc[new["Max_Tgt_Prod_ID"].isnull(), "Max_Tgt_Prod_ID"]= val
+
+val = new["Std_Tgt_Prod_ID"].median()
+
+new.loc[new["Std_Tgt_Prod_ID"].isnull(), "Std_Tgt_Prod_ID"]= val
+
+new.isnull().sum()[new.isnull().sum()>0]
+
+sns.heatmap(new.corr(), annot=True, cmap="ocean_r")
+
+#split the data into train andtest
+
+newtrain = new.loc[0:train.shape[0]-1, :]
+newtest = new.loc[train.shape[0]:,:]
+
+newtrain.shape, newtest.shape
+
+#drop purchase from newtest
+
+newtest.drop(["Purchase"], axis=1, inplace=True)
+
+newtest.Age.unique()
+
+#drop the age from newtrain and newtest
+
+newtrain.drop("Age", axis=1, inplace=True)
+newtest.drop("Age",axis=1, inplace=True)
+
+
+from sklearn.preprocessing import StandardScaler
+
+X=newtrain.drop("Purchase", axis=1)
+y=newtrain["Purchase"]
+
+X.select_dtypes(include=np.number).columns
+
+num_cols=['Avg_Age', 'Mean_Tgt_City_Wise',
+       'Median_Tgt_City_Wise', 'Std_Tgt_City_Wise', 'Prod_Wise_User_Count',
+       'Prod_Cat1_User_Count', 'Mean_Tgt_Prod_ID', 'Median_Tgt_Prod_ID',
+       'Min_Tgt_Prod_ID', 'Max_Tgt_Prod_ID', 'Std_Tgt_Prod_ID',
+       'Mean_Tgt_User_ID', 'Median_Tgt_User_ID', 'Min_Tgt_User_ID',
+       'Max_Tgt_User_ID', 'Std_Tgt_User_ID']
+
+len(num_cols)
+
+sc= StandardScaler()
+
+for i in num_cols:
+    X.loc[:,i] = sc.fit_transform(pd.DataFrame(X.loc[:,i]))
+    newtest.loc[:,i] = sc.transform(pd.DataFrame(newtest.loc[:, i]))
+
+X.head()
+
+newtest.head()
+
+#One hot encoding
+
+dummytrain= pd.get_dummies(X, drop_first= True)
+dummytest = pd.get_dummies(newtest, drop_first= True)
+
+dummytrain.shape, dummytest.shape
+
+X.columns
+
+## modelling
+
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor, BaggingRegressor, ExtraTreesRegressor
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+
+kfold=KFold(n_splits = 5, shuffle=True, random_state= 0)
+
+lr= LinearRegression()
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(lr.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("LinearRegressionModel.csv") #2597.108997752803
+
+dtree= DecisionTreeRegressor()
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(dtree.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("DTreeModel.csv") #2775.4423564842
+
+
+rf= RandomForestRegressor()
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(rf.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("RFModel.csv")
+
+xgb= XGBRegressor()
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(xgb.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("XGBModel.csv") #2502.5444450889045
+
+gbm= GradientBoostingRegressor()
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(gbm.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("GBModel.csv") #2563.0951996766994.
+
+# Parameter tuninig for xgboost
+
+xgb2= XGBRegressor(n_estimators=40, max_depth=6)
+
+pred=[]
+
+for train_index, test_index in kfold.split(dummytrain,y):
+    xtrain = dummytrain.iloc[train_index]
+    xtest = dummytrain.iloc[test_index]
+    ytrain = y.iloc[train_index]
+    ytest = y.iloc[test_index]
+    pred.append(xgb2.fit(xtrain,ytrain).predict(dummytest))
+    
+finalpred= pd.DataFrame(pred).T.mean(axis=1)
+
+sub = pd.DataFrame({"Purchase":finalpred, "User_ID":test["User_ID"], "Product_ID":test["Product_ID"]})
+
+sub.to_csv("XGBModel- Para.csv") #2525.15797605266
+
+
